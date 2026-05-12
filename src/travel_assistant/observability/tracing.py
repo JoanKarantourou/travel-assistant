@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import time
 from collections.abc import Callable
 from typing import TypeVar
 
@@ -40,6 +41,35 @@ def get_tracer() -> trace.Tracer:
     if _tracer is not None:
         return _tracer
     return trace.get_tracer("travel-assistant")
+
+
+def track_tool_call(tool_name: str) -> Callable[[F], F]:
+    """Decorator that records an OTel span, counter, and duration histogram for a tool call."""
+
+    def decorator(fn: F) -> F:
+        @functools.wraps(fn)
+        async def wrapper(*args, **kwargs):
+            from travel_assistant.observability.metrics import (
+                tool_call_duration_seconds,
+                tool_calls_total,
+            )
+
+            start = time.perf_counter()
+            status = "success"
+            try:
+                with get_tracer().start_as_current_span(f"tool.{tool_name}"):
+                    return await fn(*args, **kwargs)
+            except Exception:
+                status = "error"
+                raise
+            finally:
+                elapsed = time.perf_counter() - start
+                tool_calls_total.labels(tool=tool_name, status=status).inc()
+                tool_call_duration_seconds.labels(tool=tool_name).observe(elapsed)
+
+        return wrapper  # type: ignore[return-value]
+
+    return decorator
 
 
 def traced(span_name: str | None = None) -> Callable[[F], F]:
