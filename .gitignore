@@ -41,3 +41,9 @@ Thumbs.db
 
 # Build plan - not for version control
 BUILD_PLAN.md
+
+# Claude Code project files
+.claude/
+
+# Data files (PDFs, seeds) - placed locally by operator
+src/travel_assistant/data/
