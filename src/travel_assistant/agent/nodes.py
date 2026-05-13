@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Any
 
 import structlog
@@ -5,11 +6,12 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.prebuilt import ToolNode
 
-from travel_assistant.agent.prompts import SYSTEM_PROMPT
+from travel_assistant.agent.prompts import build_system_prompt
 from travel_assistant.agent.state import AgentState
 from travel_assistant.agent.tools import all_tools
 from travel_assistant.config import get_settings
-from travel_assistant.observability.metrics import llm_tokens_total
+from travel_assistant.observability.metrics import escalations_total, llm_tokens_total
+from travel_assistant.observability.tracing import get_tracer
 from travel_assistant.persistence.database import get_session
 from travel_assistant.persistence.models import MessageRole
 from travel_assistant.persistence.repositories import append_message
@@ -42,8 +44,9 @@ def _get_tool_node() -> ToolNode:
 async def call_agent(state: AgentState) -> dict[str, Any]:
     """Invoke the LLM with bound tools and the current message history."""
     llm = _get_llm().bind_tools(all_tools)
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}, *state["messages"]]
-    response = await llm.ainvoke(messages)
+    messages = [{"role": "system", "content": build_system_prompt(date.today())}, *state["messages"]]
+    with get_tracer().start_as_current_span("agent_node"):
+        response = await llm.ainvoke(messages)
 
     if hasattr(response, "usage_metadata") and response.usage_metadata:
         usage = response.usage_metadata
@@ -57,7 +60,8 @@ async def call_agent(state: AgentState) -> dict[str, Any]:
 
 async def call_tools(state: AgentState) -> dict[str, Any]:
     """Execute all tool calls in the last AI message and detect escalation."""
-    result = await _get_tool_node().ainvoke(state)
+    with get_tracer().start_as_current_span("tools_node"):
+        result = await _get_tool_node().ainvoke(state)
 
     last_ai = state["messages"][-1]
     tool_calls = getattr(last_ai, "tool_calls", []) or []
@@ -67,6 +71,7 @@ async def call_tools(state: AgentState) -> dict[str, Any]:
         if tc["name"] == "escalate_to_human":
             updates["requires_escalation"] = True
             updates["escalation_reason"] = tc["args"].get("reason", "unspecified")
+            escalations_total.labels(reason=updates["escalation_reason"]).inc()
             logger.info("escalation triggered", reason=updates["escalation_reason"])
             break
 
@@ -75,36 +80,37 @@ async def call_tools(state: AgentState) -> dict[str, Any]:
 
 async def persist(state: AgentState) -> dict[str, Any]:
     """Write the latest human and assistant messages to the database."""
-    messages = state["messages"]
-    session_id = state["session_id"]
+    with get_tracer().start_as_current_span("persist_node"):
+        messages = state["messages"]
+        session_id = state["session_id"]
 
-    # The graph only reaches this node when agent produced a response with no tool calls,
-    # so the last AIMessage without tool_calls is the final response for this turn.
-    last_ai = next(
-        (m for m in reversed(messages) if isinstance(m, AIMessage) and not m.tool_calls),
-        None,
-    )
-    last_human = next(
-        (m for m in reversed(messages) if isinstance(m, HumanMessage)),
-        None,
-    )
+        # The graph only reaches this node when agent produced a response with no tool calls,
+        # so the last AIMessage without tool_calls is the final response for this turn.
+        last_ai = next(
+            (m for m in reversed(messages) if isinstance(m, AIMessage) and not m.tool_calls),
+            None,
+        )
+        last_human = next(
+            (m for m in reversed(messages) if isinstance(m, HumanMessage)),
+            None,
+        )
 
-    try:
-        async with get_session() as session:
-            if last_human is not None:
-                content = (
-                    last_human.content
-                    if isinstance(last_human.content, str)
-                    else str(last_human.content)
-                )
-                await append_message(session, session_id, MessageRole.user, content)
-            if last_ai is not None:
-                content = (
-                    last_ai.content if isinstance(last_ai.content, str) else str(last_ai.content)
-                )
-                await append_message(session, session_id, MessageRole.assistant, content)
-    except Exception:
-        logger.exception("failed to persist messages", session_id=str(session_id))
+        try:
+            async with get_session() as session:
+                if last_human is not None:
+                    content = (
+                        last_human.content
+                        if isinstance(last_human.content, str)
+                        else str(last_human.content)
+                    )
+                    await append_message(session, session_id, MessageRole.user, content)
+                if last_ai is not None:
+                    content = (
+                        last_ai.content if isinstance(last_ai.content, str) else str(last_ai.content)
+                    )
+                    await append_message(session, session_id, MessageRole.assistant, content)
+        except Exception:
+            logger.exception("failed to persist messages", session_id=str(session_id))
 
     return {}
 

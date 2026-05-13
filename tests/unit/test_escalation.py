@@ -103,3 +103,32 @@ def test_check_escalation_treats_missing_flag_as_false():
     state = _state()
     del state["requires_escalation"]  # type: ignore[misc]
     assert check_escalation(state) == "end"
+
+
+@patch("travel_assistant.agent.nodes._get_tool_node")
+async def test_call_tools_increments_escalations_metric(mock_get_tool_node):
+    from travel_assistant.observability.metrics import escalations_total
+
+    tool_node = MagicMock()
+    tool_node.ainvoke = AsyncMock(return_value={"messages": []})
+    mock_get_tool_node.return_value = tool_node
+
+    reason = f"test-escalation-{uuid.uuid4().hex[:8]}"
+    before = escalations_total.labels(reason=reason)._value.get()
+
+    ai = AIMessage(
+        content="",
+        tool_calls=[
+            {
+                "name": "escalate_to_human",
+                "args": {"reason": reason},
+                "id": "tc-esc-metric",
+                "type": "tool_call",
+            }
+        ],
+    )
+    state = _state(messages=[HumanMessage(content="I want a human"), ai])
+    await call_tools(state)
+
+    after = escalations_total.labels(reason=reason)._value.get()
+    assert after == before + 1

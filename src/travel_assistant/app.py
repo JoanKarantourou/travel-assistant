@@ -1,3 +1,4 @@
+import time
 import uuid
 
 import chainlit as cl
@@ -5,8 +6,12 @@ from langchain_core.messages import HumanMessage
 
 from travel_assistant.agent.graph import build_graph
 from travel_assistant.observability.logging import bind_request_id, configure_logging, get_logger
-from travel_assistant.observability.metrics import start_metrics_server
-from travel_assistant.observability.tracing import configure_tracing
+from travel_assistant.observability.metrics import (
+    agent_turn_duration_seconds,
+    agent_turns_total,
+    start_metrics_server,
+)
+from travel_assistant.observability.tracing import configure_tracing, get_tracer
 from travel_assistant.persistence.database import get_session
 from travel_assistant.persistence.models import MessageRole
 from travel_assistant.persistence.repositories import create_chat_session, load_messages
@@ -51,39 +56,48 @@ async def on_message(message: cl.Message) -> None:
     }
 
     response_msg = cl.Message(content="")
+    start = time.perf_counter()
+    outcome = "success"
 
-    try:
-        async for event in _graph.astream_events(inputs, config=config, version="v2"):
-            if event["event"] != "on_chat_model_stream":
-                continue
-            chunk = event["data"]["chunk"]
-            content = chunk.content
-            if isinstance(content, str) and content:
-                await response_msg.stream_token(content)
-            elif isinstance(content, list):
-                for block in content:
-                    if isinstance(block, dict) and block.get("type") == "text":
-                        text = block.get("text", "")
-                        if text:
-                            await response_msg.stream_token(text)
-    except Exception:
-        _log.exception("graph stream error", session_id=str(session_id))
-        if not response_msg.content:
-            response_msg.content = "Something went wrong on my end. Please try again."
+    with get_tracer().start_as_current_span("agent_turn") as span:
+        span.set_attribute("session_id", str(session_id))
+        try:
+            try:
+                async for event in _graph.astream_events(inputs, config=config, version="v2"):
+                    if event["event"] != "on_chat_model_stream":
+                        continue
+                    chunk = event["data"]["chunk"]
+                    content = chunk.content
+                    if isinstance(content, str) and content:
+                        await response_msg.stream_token(content)
+                    elif isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "text":
+                                text = block.get("text", "")
+                                if text:
+                                    await response_msg.stream_token(text)
+            except Exception:
+                outcome = "error"
+                _log.exception("graph stream error", session_id=str(session_id))
+                if not response_msg.content:
+                    response_msg.content = "Something went wrong on my end. Please try again."
 
-    await response_msg.send()
+            await response_msg.send()
 
-    # Check final state for escalation
-    final = await _graph.aget_state(config)
-    if final.values.get("requires_escalation"):
-        ticket_id = str(uuid.uuid4())
-        reason = final.values.get("escalation_reason") or "unspecified"
-        card = (
-            f"**Escalation ticket:** `{ticket_id}`\n"
-            f"**Reason:** {reason}\n\n"
-            "A human agent will review your request and follow up shortly."
-        )
-        await cl.Message(content=card, type="system_message").send()
+            final = await _graph.aget_state(config)
+            if final.values.get("requires_escalation"):
+                outcome = "escalated"
+                ticket_id = str(uuid.uuid4())
+                reason = final.values.get("escalation_reason") or "unspecified"
+                card = (
+                    f"**Escalation ticket:** `{ticket_id}`\n"
+                    f"**Reason:** {reason}\n\n"
+                    "A human agent will review your request and follow up shortly."
+                )
+                await cl.Message(content=card, type="system_message").send()
+        finally:
+            agent_turns_total.labels(outcome=outcome).inc()
+            agent_turn_duration_seconds.observe(time.perf_counter() - start)
 
 
 @cl.on_chat_resume

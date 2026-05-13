@@ -49,7 +49,7 @@ async def test_get_forecast_raises_on_error():
 
 @respx.mock
 async def test_convert_currency():
-    respx.get("https://api.frankfurter.app/latest").mock(
+    respx.get("https://api.frankfurter.dev/v1/latest").mock(
         return_value=httpx.Response(200, json=_FRANKFURTER_RESPONSE)
     )
     result = await convert(Decimal("100"), "USD", "EUR")

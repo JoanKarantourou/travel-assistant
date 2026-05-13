@@ -1,7 +1,9 @@
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from travel_assistant.config import get_settings
 
@@ -12,7 +14,10 @@ _session_factory = None
 def _get_engine():
     global _engine
     if _engine is None:
-        _engine = create_async_engine(get_settings().db.url, pool_pre_ping=True)
+        kwargs = {"pool_pre_ping": True}
+        if os.getenv("RUN_INTEGRATION_TESTS") == "1":
+            kwargs["poolclass"] = NullPool
+        _engine = create_async_engine(get_settings().db.url, **kwargs)
     return _engine
 
 
