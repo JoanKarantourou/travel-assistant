@@ -72,7 +72,12 @@ async def test_call_tools_does_not_set_flag_for_non_escalation_tool(mock_get_too
         tool_calls=[
             {
                 "name": "get_weather",
-                "args": {"latitude": 48.8, "longitude": 2.3, "start_date": "2025-07-01", "end_date": "2025-07-02"},
+                "args": {
+                    "latitude": 48.8,
+                    "longitude": 2.3,
+                    "start_date": "2025-07-01",
+                    "end_date": "2025-07-02",
+                },
                 "id": "tc2",
                 "type": "tool_call",
             }

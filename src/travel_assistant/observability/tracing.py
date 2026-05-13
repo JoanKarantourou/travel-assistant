@@ -78,16 +78,20 @@ def traced(span_name: str | None = None) -> Callable[[F], F]:
     def decorator(fn: F) -> F:
         name = span_name or fn.__qualname__
         if asyncio.iscoroutinefunction(fn):
+
             @functools.wraps(fn)
             async def async_wrapper(*args, **kwargs):
                 with get_tracer().start_as_current_span(name):
                     return await fn(*args, **kwargs)
+
             return async_wrapper  # type: ignore[return-value]
         else:
+
             @functools.wraps(fn)
             def sync_wrapper(*args, **kwargs):
                 with get_tracer().start_as_current_span(name):
                     return fn(*args, **kwargs)
+
             return sync_wrapper  # type: ignore[return-value]
 
     return decorator

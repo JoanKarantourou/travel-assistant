@@ -10,6 +10,7 @@ the factory in flights.py / hotels.py.
 Outputs are deterministic: the same query inputs always produce the same offers,
 but different inputs produce different results.
 """
+
 import hashlib
 import random
 from datetime import date, datetime, timedelta

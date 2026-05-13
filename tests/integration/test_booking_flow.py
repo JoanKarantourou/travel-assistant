@@ -1,8 +1,6 @@
 from datetime import date
 from decimal import Decimal
 
-import pytest
-
 from tests.conftest import skip_no_db
 from travel_assistant.persistence.database import get_session
 from travel_assistant.persistence.models import BookingStatus
@@ -50,9 +48,7 @@ async def test_booking_is_retrievable_by_customer_and_date():
         )
 
     async with get_session() as session:
-        found = await find_booking_by_customer_and_dates(
-            session, "Bob Explorer", date(2025, 10, 1)
-        )
+        found = await find_booking_by_customer_and_dates(session, "Bob Explorer", date(2025, 10, 1))
 
     assert found is not None
     assert str(found.id) == str(created.id)

@@ -100,9 +100,7 @@ async def persist(state: AgentState) -> dict[str, Any]:
                 await append_message(session, session_id, MessageRole.user, content)
             if last_ai is not None:
                 content = (
-                    last_ai.content
-                    if isinstance(last_ai.content, str)
-                    else str(last_ai.content)
+                    last_ai.content if isinstance(last_ai.content, str) else str(last_ai.content)
                 )
                 await append_message(session, session_id, MessageRole.assistant, content)
     except Exception:

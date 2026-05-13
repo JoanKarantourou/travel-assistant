@@ -65,21 +65,25 @@ def chunk_pdf(path: Path) -> list[Chunk]:
         page_num = _locate_page(content, pages)
 
         if len(content) <= _MAX_CHUNK_CHARS:
-            chunks.append(Chunk(
-                source=path.name,
-                page=page_num,
-                chunk_index=chunk_index,
-                content=content,
-            ))
-            chunk_index += 1
-        else:
-            for sub in _split_sentences(content, _MAX_CHUNK_CHARS):
-                chunks.append(Chunk(
+            chunks.append(
+                Chunk(
                     source=path.name,
                     page=page_num,
                     chunk_index=chunk_index,
-                    content=sub,
-                ))
+                    content=content,
+                )
+            )
+            chunk_index += 1
+        else:
+            for sub in _split_sentences(content, _MAX_CHUNK_CHARS):
+                chunks.append(
+                    Chunk(
+                        source=path.name,
+                        page=page_num,
+                        chunk_index=chunk_index,
+                        content=sub,
+                    )
+                )
                 chunk_index += 1
 
     return chunks

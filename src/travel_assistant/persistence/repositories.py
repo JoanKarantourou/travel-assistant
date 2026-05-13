@@ -24,12 +24,8 @@ async def create_chat_session(
     return chat_session
 
 
-async def get_chat_session(
-    session: AsyncSession, session_id: uuid.UUID
-) -> ChatSession | None:
-    result = await session.execute(
-        select(ChatSession).where(ChatSession.id == session_id)
-    )
+async def get_chat_session(session: AsyncSession, session_id: uuid.UUID) -> ChatSession | None:
+    result = await session.execute(select(ChatSession).where(ChatSession.id == session_id))
     return result.scalar_one_or_none()
 
 
@@ -96,7 +92,5 @@ async def nearest_faq_chunks(
     session: AsyncSession, embedding: list[float], k: int = 4
 ) -> list[tuple[FAQChunk, float]]:
     distance = FAQChunk.embedding.cosine_distance(embedding).label("distance")
-    result = await session.execute(
-        select(FAQChunk, distance).order_by(distance).limit(k)
-    )
+    result = await session.execute(select(FAQChunk, distance).order_by(distance).limit(k))
     return [(row.FAQChunk, float(row.distance)) for row in result]

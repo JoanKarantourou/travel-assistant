@@ -42,9 +42,7 @@ async def test_get_forecast_parses_response():
 
 @respx.mock
 async def test_get_forecast_raises_on_error():
-    respx.get("https://api.open-meteo.com/v1/forecast").mock(
-        return_value=httpx.Response(503)
-    )
+    respx.get("https://api.open-meteo.com/v1/forecast").mock(return_value=httpx.Response(503))
     with pytest.raises(httpx.HTTPStatusError):
         await get_forecast(0.0, 0.0, date(2025, 7, 1), date(2025, 7, 2))
 

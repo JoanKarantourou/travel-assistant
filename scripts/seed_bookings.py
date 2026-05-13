@@ -1,4 +1,5 @@
 """Insert sample bookings for manual testing. Safe to run multiple times."""
+
 import asyncio
 from datetime import date
 from decimal import Decimal

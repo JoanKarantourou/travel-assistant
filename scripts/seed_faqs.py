@@ -1,4 +1,5 @@
 """Ingest faqs.pdf into the faq_chunks table. Safe to run multiple times."""
+
 import asyncio
 
 from travel_assistant.rag.ingest import run_ingest

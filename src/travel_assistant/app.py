@@ -95,7 +95,7 @@ async def on_message(message: cl.Message) -> None:
 
 @cl.on_chat_resume
 async def on_chat_resume(thread: cl.types.ThreadDict) -> None:
-    metadata = (thread.get("metadata") or {})
+    metadata = thread.get("metadata") or {}
     session_id_str: str | None = metadata.get("session_id")
     if not session_id_str:
         return

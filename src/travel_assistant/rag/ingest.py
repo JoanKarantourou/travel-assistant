@@ -26,9 +26,7 @@ async def run_ingest(path: Path = _FAQ_PDF) -> int:
         return 0
 
     model = _get_model()
-    embeddings = model.encode(
-        [c.content for c in chunks], batch_size=32, show_progress_bar=False
-    )
+    embeddings = model.encode([c.content for c in chunks], batch_size=32, show_progress_bar=False)
 
     async with get_session() as session:
         for chunk, embedding in zip(chunks, embeddings, strict=True):
