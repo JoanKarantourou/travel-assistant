@@ -35,7 +35,7 @@ def _get_llm() -> ChatAnthropic:
 def _get_tool_node() -> ToolNode:
     global _tool_node
     if _tool_node is None:
-        _tool_node = ToolNode(all_tools)
+        _tool_node = ToolNode(all_tools, handle_tool_errors=True)
     return _tool_node
 
 

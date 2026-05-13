@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from travel_assistant.providers import get_http_client
 
 # Frankfurter is ECB-sourced, free, no API key required.
-_FRANKFURTER_URL = "https://api.frankfurter.app/latest"
+_FRANKFURTER_URL = "https://api.frankfurter.dev/v1/latest"
 _CACHE_TTL = 600  # seconds
 
 _rate_cache: dict[tuple[str, str], tuple[Decimal, float]] = {}

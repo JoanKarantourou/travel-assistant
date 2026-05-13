@@ -1,0 +1,29 @@
+/* Message input top padding */
+#chat-input,
+.MuiInputBase-inputMultiline {
+  padding-top: 0.3rem !important;
+}
+
+/* Thin custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.35);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.6);
+}
+
+/* Hide dark/light theme toggle */
+button[aria-label="Toggle dark mode"],
+button[aria-label="Toggle light mode"],
+button[aria-label*="dark" i],
+button[aria-label*="light" i],
+[data-testid="toggle-theme"] {
+  display: none !important;
+}
