@@ -22,83 +22,56 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
-    messagerole = sa.Enum("user", "assistant", "tool", "system", name="messagerole")
-    bookingstatus = sa.Enum("confirmed", "cancelled", name="bookingstatus")
-    messagerole.create(op.get_bind(), checkfirst=True)
-    bookingstatus.create(op.get_bind(), checkfirst=True)
+    op.execute("CREATE TYPE messagerole AS ENUM ('user', 'assistant', 'tool', 'system')")
+    op.execute("CREATE TYPE bookingstatus AS ENUM ('confirmed', 'cancelled')")
 
-    op.create_table(
-        "chat_sessions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("customer_name", sa.String(255), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-    )
+    op.execute("""
+        CREATE TABLE chat_sessions (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            customer_name VARCHAR(255),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """)
 
-    op.create_table(
-        "chat_messages",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "session_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("chat_sessions.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column("role", messagerole, nullable=False),
-        sa.Column("content", sa.Text, nullable=False),
-        sa.Column("tool_name", sa.String(100), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-    )
+    op.execute("""
+        CREATE TABLE chat_messages (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            session_id UUID NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+            role messagerole NOT NULL,
+            content TEXT NOT NULL,
+            tool_name VARCHAR(100),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """)
 
-    op.create_table(
-        "bookings",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("customer_name", sa.String(255), nullable=False),
-        sa.Column("start_date", sa.Date, nullable=False),
-        sa.Column("end_date", sa.Date, nullable=False),
-        sa.Column("destination", sa.String(255), nullable=False),
-        sa.Column("flight_number", sa.String(20), nullable=False),
-        sa.Column("hotel_name", sa.String(255), nullable=False),
-        sa.Column("total_price_eur", sa.Numeric(10, 2), nullable=False),
-        sa.Column("status", bookingstatus, nullable=False, server_default="confirmed"),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-    )
+    op.execute("""
+        CREATE TABLE bookings (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            customer_name VARCHAR(255) NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            destination VARCHAR(255) NOT NULL,
+            flight_number VARCHAR(20) NOT NULL,
+            hotel_name VARCHAR(255) NOT NULL,
+            total_price_eur NUMERIC(10, 2) NOT NULL,
+            status bookingstatus NOT NULL DEFAULT 'confirmed',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """)
 
-    op.create_table(
-        "faq_chunks",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("source", sa.String(255), nullable=False),
-        sa.Column("page", sa.Integer, nullable=False),
-        sa.Column("chunk_index", sa.Integer, nullable=False),
-        sa.Column("content", sa.Text, nullable=False),
-        sa.Column("embedding", sa.Text, nullable=False),  # placeholder; cast below
-        sa.UniqueConstraint("source", "page", "chunk_index", name="uq_faq_chunk"),
-    )
+    op.execute("""
+        CREATE TABLE faq_chunks (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            source VARCHAR(255) NOT NULL,
+            page INTEGER NOT NULL,
+            chunk_index INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            embedding vector(384),
+            CONSTRAINT uq_faq_chunk UNIQUE (source, page, chunk_index)
+        )
+    """)
 
-    op.execute(
-        "ALTER TABLE faq_chunks ALTER COLUMN embedding"
-        " TYPE vector(384) USING embedding::vector(384)"
-    )
     op.execute(
         "CREATE INDEX faq_chunks_embedding_hnsw"
         " ON faq_chunks USING hnsw (embedding vector_cosine_ops)"
