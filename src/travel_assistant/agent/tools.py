@@ -1,3 +1,9 @@
+"""LangChain tool definitions exposed to the travel-assistant agent.
+
+Each function is decorated with ``@tool`` so the LLM can invoke it by name.
+All tools return JSON strings so the model receives a consistent, parseable format.
+"""
+
 import json
 from datetime import date
 from decimal import Decimal

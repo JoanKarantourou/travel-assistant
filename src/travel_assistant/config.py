@@ -1,3 +1,9 @@
+"""Application configuration loaded from environment variables and .env files.
+
+Each settings group maps to a logical subsystem; the root ``Settings`` object
+composes them all and is accessed application-wide via ``get_settings()``.
+"""
+
 from functools import lru_cache
 
 from pydantic import Field
@@ -5,6 +11,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DatabaseSettings(BaseSettings):
+    """PostgreSQL connection parameters, read from DB_* environment variables."""
+
     model_config = SettingsConfigDict(env_prefix="DB_", env_file=".env", extra="ignore")
 
     host: str = "localhost"
@@ -15,12 +23,15 @@ class DatabaseSettings(BaseSettings):
 
     @property
     def url(self) -> str:
+        """Async SQLAlchemy connection URL for asyncpg."""
         return (
             f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
         )
 
 
 class LLMSettings(BaseSettings):
+    """Anthropic API credentials and model selection, read from ANTHROPIC_* variables."""
+
     model_config = SettingsConfigDict(env_prefix="ANTHROPIC_", env_file=".env", extra="ignore")
 
     api_key: str = ""
@@ -28,6 +39,8 @@ class LLMSettings(BaseSettings):
 
 
 class ObservabilitySettings(BaseSettings):
+    """OTLP tracing endpoint and Prometheus scrape-port configuration."""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     otel_exporter_otlp_endpoint: str = "http://localhost:4317"
@@ -36,6 +49,8 @@ class ObservabilitySettings(BaseSettings):
 
 
 class AppSettings(BaseSettings):
+    """General application settings such as log level and runtime environment."""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     log_level: str = "INFO"
@@ -43,6 +58,8 @@ class AppSettings(BaseSettings):
 
 
 class Settings(BaseSettings):
+    """Root settings object that composes all subsystem settings groups."""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     db: DatabaseSettings = Field(default_factory=DatabaseSettings)
@@ -53,4 +70,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """Return the cached application settings, loading from env/`.env` on first call."""
     return Settings()

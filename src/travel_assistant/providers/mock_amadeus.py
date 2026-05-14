@@ -40,7 +40,10 @@ _ROOM_TYPES = ["STANDARD", "DELUXE", "SUITE"]
 
 
 class MockAmadeusProvider:
+    """Deterministic in-memory implementation of both ``FlightProvider`` and ``HotelProvider``."""
+
     def _rng(self, *keys: str) -> random.Random:
+        """Return a seeded ``Random`` instance derived deterministically from *keys*."""
         digest = hashlib.md5("|".join(keys).encode()).hexdigest()
         return random.Random(int(digest, 16) % (2**32))
 
@@ -52,6 +55,7 @@ class MockAmadeusProvider:
         return_date: date | None,
         adults: int,
     ) -> list[FlightOffer]:
+        """Generate 3–5 deterministic flight offers for the given route and date."""
         rng = self._rng(origin, destination, str(depart_date))
         offers = []
         for i in range(rng.randint(3, 5)):
@@ -90,6 +94,7 @@ class MockAmadeusProvider:
         check_out: date,
         adults: int,
     ) -> list[HotelOffer]:
+        """Generate 2–4 deterministic hotel offers for the given city and stay dates."""
         rng = self._rng(city_code, str(check_in), str(check_out))
         nights = max((check_out - check_in).days, 1)
         offers = []

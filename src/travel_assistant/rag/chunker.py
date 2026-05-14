@@ -1,3 +1,10 @@
+"""PDF chunker for FAQ documents.
+
+Splits a PDF into question-level text chunks suitable for embedding and
+vector retrieval.  Each chunk is bounded by ``_MAX_CHUNK_CHARS`` and aligned
+to sentence boundaries where possible.
+"""
+
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,6 +18,8 @@ _MAX_CHUNK_CHARS = 800
 
 @dataclass
 class Chunk:
+    """A single indexed text segment extracted from a source document."""
+
     source: str
     page: int
     chunk_index: int
@@ -22,6 +31,7 @@ def _normalize(text: str) -> str:
 
 
 def _split_sentences(text: str, max_len: int) -> list[str]:
+    """Break *text* into segments no longer than *max_len* characters, splitting at sentence ends."""
     sentences = _SENTENCE_END.split(text)
     result: list[str] = []
     current = ""
@@ -39,6 +49,7 @@ def _split_sentences(text: str, max_len: int) -> list[str]:
 
 
 def _locate_page(probe: str, pages: list[tuple[int, str]]) -> int:
+    """Return the page number that contains the start of *probe*, falling back to page 1."""
     needle = re.sub(r"\s+", "", probe[:40]).lower()
     for page_num, text in pages:
         if needle in re.sub(r"\s+", "", text).lower():
@@ -47,6 +58,7 @@ def _locate_page(probe: str, pages: list[tuple[int, str]]) -> int:
 
 
 def chunk_pdf(path: Path) -> list[Chunk]:
+    """Parse a FAQ PDF and return a flat list of question-level ``Chunk`` objects."""
     reader = pypdf.PdfReader(str(path))
     pages = [(i + 1, _normalize(p.extract_text() or "")) for i, p in enumerate(reader.pages)]
     full_text = " ".join(text for _, text in pages)

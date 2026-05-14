@@ -1,3 +1,9 @@
+"""Chainlit application entry point for the travel-assistant chatbot.
+
+Wires together the LangGraph agent, persistence layer, and observability stack,
+and defines the Chainlit lifecycle hooks that handle chat sessions.
+"""
+
 import time
 import uuid
 
@@ -22,6 +28,7 @@ _log = get_logger(__name__)
 
 @cl.on_app_startup
 async def on_startup() -> None:
+    """Initialize logging, tracing, and Prometheus metrics when the server starts."""
     configure_logging()
     configure_tracing()
     start_metrics_server()
@@ -29,6 +36,7 @@ async def on_startup() -> None:
 
 @cl.on_chat_start
 async def on_chat_start() -> None:
+    """Create a new database session and greet the user when a chat opens."""
     async with get_session() as db:
         chat_session = await create_chat_session(db)
 
@@ -41,6 +49,7 @@ async def on_chat_start() -> None:
 
 @cl.on_message
 async def on_message(message: cl.Message) -> None:
+    """Stream the agent response and record turn metrics for every user message."""
     bind_request_id()
 
     session_id = uuid.UUID(cl.user_session.get("session_id"))
@@ -96,12 +105,15 @@ async def on_message(message: cl.Message) -> None:
                 )
                 await cl.Message(content=card, type="system_message").send()
         finally:
+            # Guaranteed to run even when the stream raises, so metrics are
+            # always flushed regardless of outcome.
             agent_turns_total.labels(outcome=outcome).inc()
             agent_turn_duration_seconds.observe(time.perf_counter() - start)
 
 
 @cl.on_chat_resume
 async def on_chat_resume(thread: cl.types.ThreadDict) -> None:
+    """Restore Chainlit session state and replay stored messages when a thread is resumed."""
     metadata = thread.get("metadata") or {}
     session_id_str: str | None = metadata.get("session_id")
     if not session_id_str:

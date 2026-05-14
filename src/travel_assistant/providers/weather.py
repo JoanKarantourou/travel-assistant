@@ -1,3 +1,9 @@
+"""Weather forecast retrieval via the Open-Meteo API.
+
+Fetches daily temperature and precipitation data for a given coordinate range
+without requiring an API key.
+"""
+
 from datetime import date
 
 from pydantic import BaseModel
@@ -8,6 +14,8 @@ _OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 
 
 class DailyForecast(BaseModel):
+    """Weather summary for a single day at a location."""
+
     date: date
     temp_max: float
     temp_min: float
@@ -16,6 +24,8 @@ class DailyForecast(BaseModel):
 
 
 class WeatherForecast(BaseModel):
+    """Multi-day weather forecast for a specific coordinate."""
+
     latitude: float
     longitude: float
     daily: list[DailyForecast]
@@ -27,6 +37,7 @@ async def get_forecast(
     start_date: date,
     end_date: date,
 ) -> WeatherForecast:
+    """Fetch a daily weather forecast from Open-Meteo for the given coordinates and date range."""
     response = await get_http_client().get(
         _OPEN_METEO_URL,
         params={

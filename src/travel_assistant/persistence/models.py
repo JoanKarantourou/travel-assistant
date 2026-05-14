@@ -1,3 +1,9 @@
+"""SQLAlchemy ORM models and enumerations for the travel-assistant database schema.
+
+Defines the tables for chat sessions, messages, bookings, and FAQ vector chunks,
+together with the enumerations used as column types.
+"""
+
 import enum
 import uuid
 from datetime import datetime, timezone
@@ -24,10 +30,12 @@ def _utcnow() -> datetime:
 
 
 class Base(DeclarativeBase):
-    pass
+    """Declarative base for all ORM models."""
 
 
 class MessageRole(enum.StrEnum):
+    """Role of a participant in a chat conversation."""
+
     user = "user"
     assistant = "assistant"
     tool = "tool"
@@ -35,11 +43,15 @@ class MessageRole(enum.StrEnum):
 
 
 class BookingStatus(enum.StrEnum):
+    """Lifecycle status of a travel booking."""
+
     confirmed = "confirmed"
     cancelled = "cancelled"
 
 
 class ChatSession(Base):
+    """A single end-to-end conversation session with one customer."""
+
     __tablename__ = "chat_sessions"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -55,6 +67,8 @@ class ChatSession(Base):
 
 
 class ChatMessage(Base):
+    """A single message within a ``ChatSession``, from any participant role."""
+
     __tablename__ = "chat_messages"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -70,6 +84,8 @@ class ChatMessage(Base):
 
 
 class Booking(Base):
+    """A confirmed travel booking combining a flight and a hotel stay."""
+
     __tablename__ = "bookings"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -87,6 +103,8 @@ class Booking(Base):
 
 
 class FAQChunk(Base):
+    """A text chunk from the FAQ document, with its pgvector embedding for similarity search."""
+
     __tablename__ = "faq_chunks"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

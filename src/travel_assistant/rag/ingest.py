@@ -1,3 +1,9 @@
+"""FAQ ingestion pipeline: parse, embed, and upsert chunks into the database.
+
+Reads the FAQ PDF, chunks it, generates embeddings with the same model used
+for retrieval, and upserts each chunk into the ``faq_chunks`` table.
+"""
+
 from pathlib import Path
 
 from sentence_transformers import SentenceTransformer
@@ -14,6 +20,7 @@ _model: SentenceTransformer | None = None
 
 
 def _get_model() -> SentenceTransformer:
+    """Return the singleton sentence-transformer model, loading it on first call."""
     global _model
     if _model is None:
         _model = SentenceTransformer(_MODEL_NAME)
@@ -21,6 +28,7 @@ def _get_model() -> SentenceTransformer:
 
 
 async def run_ingest(path: Path = _FAQ_PDF) -> int:
+    """Ingest *path* into the database and return the number of chunks upserted."""
     chunks = chunk_pdf(path)
     if not chunks:
         return 0
@@ -30,6 +38,8 @@ async def run_ingest(path: Path = _FAQ_PDF) -> int:
 
     async with get_session() as session:
         for chunk, embedding in zip(chunks, embeddings, strict=True):
+            # Upsert so re-running ingest after PDF edits refreshes content
+            # without violating the unique constraint on (source, page, chunk_index).
             stmt = (
                 insert(FAQChunk)
                 .values(

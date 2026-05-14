@@ -1,3 +1,9 @@
+"""LangGraph node implementations for the travel-assistant agent graph.
+
+Each public function is a graph node that reads from and writes to ``AgentState``.
+Private helpers manage singleton instances of the LLM and tool executor.
+"""
+
 from datetime import date
 from typing import Any
 
@@ -23,6 +29,7 @@ _tool_node: ToolNode | None = None
 
 
 def _get_llm() -> ChatAnthropic:
+    """Return the singleton ``ChatAnthropic`` instance, creating it on first call."""
     global _llm
     if _llm is None:
         settings = get_settings()
@@ -35,6 +42,7 @@ def _get_llm() -> ChatAnthropic:
 
 
 def _get_tool_node() -> ToolNode:
+    """Return the singleton ``ToolNode``, creating it on first call."""
     global _tool_node
     if _tool_node is None:
         _tool_node = ToolNode(all_tools, handle_tool_errors=True)

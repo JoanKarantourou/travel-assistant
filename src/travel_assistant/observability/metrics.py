@@ -1,3 +1,9 @@
+"""Prometheus metrics definitions and HTTP server startup for the travel assistant.
+
+Declares all counters and histograms used across the application and exposes them
+on a configurable port for scraping.
+"""
+
 from prometheus_client import Counter, Histogram, start_http_server
 
 from travel_assistant.config import get_settings
@@ -41,6 +47,7 @@ _server_started = False
 
 
 def start_metrics_server() -> None:
+    """Start the Prometheus HTTP scrape server on the configured port, at most once."""
     global _server_started
     if not _server_started:
         port = get_settings().observability.prometheus_port

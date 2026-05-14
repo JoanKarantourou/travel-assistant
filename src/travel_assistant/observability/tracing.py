@@ -1,3 +1,10 @@
+"""OpenTelemetry tracing configuration and decorator utilities.
+
+Sets up a ``TracerProvider`` backed by an OTLP gRPC exporter, instruments
+httpx and SQLAlchemy automatically, and provides ``track_tool_call`` and
+``traced`` decorators for manual span creation.
+"""
+
 import asyncio
 import functools
 import time
@@ -20,6 +27,7 @@ _tracer: trace.Tracer | None = None
 
 
 def configure_tracing() -> None:
+    """Initialise the OTLP tracer provider and auto-instrument httpx and SQLAlchemy."""
     global _tracer
     settings = get_settings()
 
@@ -38,6 +46,7 @@ def configure_tracing() -> None:
 
 
 def get_tracer() -> trace.Tracer:
+    """Return the configured tracer, falling back to a no-op tracer before ``configure_tracing`` runs."""
     if _tracer is not None:
         return _tracer
     return trace.get_tracer("travel-assistant")

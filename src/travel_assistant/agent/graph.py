@@ -1,3 +1,9 @@
+"""LangGraph agent graph definition for the travel assistant.
+
+Assembles the agent, tools, and persist nodes into a compiled ``StateGraph``
+that drives the conversational loop.
+"""
+
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 

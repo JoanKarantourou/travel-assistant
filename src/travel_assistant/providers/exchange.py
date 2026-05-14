@@ -1,3 +1,9 @@
+"""Currency conversion via the Frankfurter API (ECB-sourced rates).
+
+Exchange rates are cached in memory for ``_CACHE_TTL`` seconds to avoid
+hammering the public API on every tool invocation.
+"""
+
 import time
 from decimal import Decimal
 
@@ -13,6 +19,8 @@ _rate_cache: dict[tuple[str, str], tuple[Decimal, float]] = {}
 
 
 class ExchangeResult(BaseModel):
+    """Result of a currency conversion, including the applied rate."""
+
     from_ccy: str
     to_ccy: str
     amount: Decimal
@@ -21,6 +29,7 @@ class ExchangeResult(BaseModel):
 
 
 async def convert(amount: Decimal, from_ccy: str, to_ccy: str) -> ExchangeResult:
+    """Convert *amount* from *from_ccy* to *to_ccy*, using a cached exchange rate."""
     from_ccy = from_ccy.upper()
     to_ccy = to_ccy.upper()
 

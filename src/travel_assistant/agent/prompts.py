@@ -1,7 +1,13 @@
+"""System prompt construction for the travel-assistant agent.
+
+Keeps prompt text out of the node logic so it can be updated independently.
+"""
+
 from datetime import date
 
 
 def build_system_prompt(today: date) -> str:
+    """Return the system prompt string with today's date interpolated."""
     return f"""You are a travel agency assistant. Help customers plan trips, answer travel \
 questions, and create bookings.
 
