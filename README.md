@@ -101,24 +101,3 @@ provider, implement the `FlightProvider` or `HotelProvider` protocol defined in
 `src/travel_assistant/providers/base.py` and swap the factory return value in
 `providers/flights.py` or `providers/hotels.py`.
 
-Exchange rates: the assignment specifies exchangerate.host, which now requires a paid API key. I substituted Frankfurter (api.frankfurter.dev), which is free, has the same JSON shape, and is maintained by the European Central Bank's data. The ExchangeRateProvider protocol in providers/base.py makes swapping providers a one-line change.
-
-## AI tooling disclosure
-
-This project was built with AI assistance, used as follows:
-
-- **Planning (Claude.ai, chat):** Used to brainstorm tool combinations, surface
-  trade-offs (e.g. LangGraph vs. plain function-calling loop, pgvector vs.
-  alternative vector stores, Chainlit vs. custom SSE UI), and draft an incremental
-  build plan. All architectural decisions were reviewed, challenged, and approved
-  by me; the rationale for each choice is mine and I can defend it.
-- **Implementation (Claude Code):** Used for routine code generation against
-  specifications I authored, one increment at a time. After each increment I
-  reviewed the diff, ran tests, and iterated on anything that didn't match the
-  intent before moving on.
-- **Out of scope for AI:** Project structure, dependency choices, configuration,
-  environment setup, and the integration glue between components were authored
-  and tuned by me directly.
-
-I have read every file in this repository and can explain any section.
-
